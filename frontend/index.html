@@ -1,19 +1,29 @@
 <html>
 	<head>
-		<title>Controll Robotic Arm Remotely</title>
+		<title>Control Braccio Robotic Arm</title>
 		<style>
 			body { margin: 0; }
 		</style>
 	</head>
 	<body>
-	    <script>
+	<script>
 		    Number.prototype.clamp = function(min, max) {
 		    return Math.min(Math.max(this, min), max);
 		    };
+		    var publicIp = 'http://109.166.174.220:4000';
+		    var localIp = 'http://192.168.1.15:4000';
+		    var ip = publicIp;
+		    try {
+		        let xhr = new XMLHttpRequest();
+		        xhr.open('GET', ip, false);
+		        xhr.send();
+		    } catch (err) {
+		        ip = localIp;
+		    }
 		    setInterval(() => {
 			    var xhr = new XMLHttpRequest();
 	    
-			    xhr.open('GET', 'http://109.166.174.220:4000/cameraImage', true);
+			    xhr.open('GET', ip + '/cameraImage', true);
 			    xhr.onload = function(){
 				    var img = new Image();
 				    var response = xhr.responseText;
@@ -31,18 +41,26 @@
 			    // wait for response
 			    
 			    
-		    }, 50);
-	    </script>
-        <script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/libs/inflate.min.js"></script>
-		<script src="https://threejs.org/build/three.js"></script>
-        <script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/loaders/FBXLoader.js"></script>
-        <script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/controls/OrbitControls.js"></script>
-        <script src="TransformControls.js"></script>
-	    <script src="main.js"></script>
-		<img src = "http://109.166.174.220:4000/cameraImage" id="image" width="20%" style="border:10px solid #000000; position: absolute; left: 10px; bottom: 10px;"/>
-	    <button onclick="poseRPIShake()"style="border:1px solid #000000; position: absolute; right: 10px; top: 10px">See Raspberry Shake</button>
-	    <button onclick="dance()"style="border:1px solid #000000; position: absolute; right: 10px; top: 30px">Dance</button>
-	    <button onclick="stopDance()"style="border:1px solid #000000; position: absolute; right: 10px; top: 50px">Stop Dance</button>
-	    <button onclick="resetRotations()"style="border:1px solid #000000; position: absolute; right: 10px; top: 70px">Reset</button>
+		    }, 1);
+	</script>
+        <div id="savedLocationsList" style="border:1px solid #000000; position: absolute; left: 10px; top: 10px"></div>
+	<script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/libs/inflate.min.js"></script>
+	<script src="https://threejs.org/build/three.js"></script>
+	<script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/lines/LineSegments2.js"></script>
+	<script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/lines/Line2.js"></script>
+	<script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/utils/GeometryUtils.js"></script>
+	<script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/lines/LineMaterial.js"></script>
+	<script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/lines/LineSegmentsGeometry.js"></script>
+	<script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/lines/LineGeometry.js"></script>
+	<script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/loaders/FBXLoader.js"></script>
+	<script src="https://cdn.rawgit.com/mrdoob/three.js/master/examples/js/controls/OrbitControls.js"></script>
+	<script src="TransformControls.js"></script>
+	<script src="main.js"></script>
+	<img src = "http://109.166.174.220:4000/cameraImage" id="image" width="30%" style="border:10px solid #000000; position: absolute; left: 10px; bottom: 10px;"/>
+	<button onclick="poseRPIShake()" style="border:1px solid #000000; position: absolute; right: 10px; top: 10px">See Raspberry Shake</button>
+	<button onclick="dance()" style="border:1px solid #000000; position: absolute; right: 10px; top: 30px">Dance</button>
+	<button onclick="stopDance()" style="border:1px solid #000000; position: absolute; right: 10px; top: 50px">Stop Dance</button>
+	<button onclick="resetRotations()" style="border:1px solid #000000; position: absolute; right: 10px; top: 70px">Reset</button>
+	<button onclick="saveRotations()" style="border:1px solid #000000; position: absolute; right: 10px; top: 90px">Save rotations</button>
 	</body>
 </html>

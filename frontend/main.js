@@ -93,10 +93,10 @@ loader.load( 'braccio.fbx', function ( object ) {
         }, false);
         transformControls[joint.name].space = "local";
         transformControls[joint.name].snap = 1;
-        transformControls[joint.name].attach(joint);    
+        transformControls[joint.name].attach(joint);
         scene.add(transformControls[joint.name]);
     });
-    resetRotations();
+    loadRotations();
 } );
 
 camera.position.set(50, 70, 20);
@@ -123,11 +123,11 @@ var last_rotations = {0: 90, 1: 90, 3: 90, 4: 90};
 
 function getRotations() {
     return {
-        0: 180 - (radToDeg(bones[0].rotation.y) + bones[0].rotOffset),
-        1: radToDeg(bones[1].rotation.x) + bones[1].rotOffset,
-        2: radToDeg(bones[2].rotation.x) + bones[2].rotOffset,
-        3: radToDeg(bones[3].rotation.x) + bones[3].rotOffset,
-        4: 180 - (radToDeg(bones[4].rotation.y) + bones[4].rotOffset)
+        0: Math.round(180 - (radToDeg(bones[0].rotation.y) + bones[0].rotOffset)),
+        1: Math.round(radToDeg(bones[1].rotation.x) + bones[1].rotOffset),
+        2: Math.round(radToDeg(bones[2].rotation.x) + bones[2].rotOffset),
+        3: Math.round(radToDeg(bones[3].rotation.x) + bones[3].rotOffset),
+        4: Math.round(180 - (radToDeg(bones[4].rotation.y) + bones[4].rotOffset))
     }
 }
 
@@ -137,6 +137,15 @@ function setRotations(newRotations) {
     bones[2].rotation.x = degToRad(newRotations[2] - bones[2].rotOffset);
     bones[3].rotation.x = degToRad(newRotations[3] - bones[3].rotOffset);
     bones[4].rotation.y = degToRad((180 - newRotations[4] - bones[4].rotOffset));
+}
+
+function loadRotations() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.open('POST', '/updateBones', false);
+    xhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+    xhttp.send(JSON.stringify({}));
+    var newRotations = JSON.parse(xhttp.responseText);
+    setRotations(newRotations);
 }
 
 async function sendRotations(updateRotations = true) {
@@ -155,7 +164,25 @@ async function sendRotations(updateRotations = true) {
     }
 }
 
-document.onmouseup = (() => { sendRotations(); });
+var mouseDown = 0;
+document.body.onmousedown = function() {
+    mouseDown++;
+}
+document.body.onmouseup = function() {
+    mouseDown--;
+}
+document.body.ontouchstart = function() {
+    mouseDown++;
+}
+document.body.ontouchend = function() {
+    mouseDown--;
+}
+
+document.onmouseup = sendRotations;
+document.ontouchend = sendRotations;
+document.onmousemove = sendRotations;
+document.ontouchmove = sendRotations;
+setInterval(function() { if(mouseDown == 0) loadRotations(); }, 10);
 
 function poseRPIShake()
 {
@@ -172,41 +199,32 @@ song.addEventListener('ended', function() {
     song.play();
 }, false);
 
-async function dance()
-{
+var danceSteps = [{0: 90 , 1: 90 , 2: 27 , 3: 180, 4: 90 },
+                  {0: 0  , 1: 90 , 2: 86 , 3: 180, 4: 0  },
+                  {0: 106, 1: 64 , 2: 116, 3: 91 , 4: 180},
+                  {0: 106, 1: 165, 2: 2  , 3: 178, 4: 0  }];
+var danceStepIdx = 0;
+const danceTimeout = 1000;
+var danceActive = false;
+
+function doDance() {
+    if(!danceActive)
+        return;
+    setRotations(danceSteps[danceStepIdx]);
+    sendRotations()
+    danceStepIdx = (danceStepIdx + 1) % danceSteps.length;
+    setTimeout(doDance, danceTimeout);
+}
+
+async function dance() {
     song.play();
-    if(danceid)
-        return;    
-    danceid = setInterval(() => {
-        if(!danceid)
-            return;
-        setRotations({0: 90, 1: 90, 2: 27.000000000000007, 3: 180, 4: 90});
-        sendRotations();
-        setTimeout(() => {
-        if(!danceid)
-            return;
-        setRotations({0: 0, 1: 90, 2: 86, 3: 180, 4: 0});
-        sendRotations();
-        setTimeout(() => {
-        if(!danceid)
-            return;
-        setRotations({0: 106, 1: 64, 2: 116, 3: 91, 4: 180});
-        sendRotations();
-        setTimeout(() => {
-        if(!danceid)
-            return;
-        setRotations({0: 106, 1: 165, 2: 2, 3: 178, 4: 0});
-        sendRotations();
-        }, 1000);
-        }, 1000);
-        }, 1000);
-    }, 3000);
+    danceActive = true;
+    doDance();
 }
 
 function stopDance()
 {
-    clearInterval(danceid);
-    danceid = null;
+    danceActive = false;
     song.loop = false;
     song.pause();
     song.currentTime = 0;
@@ -217,3 +235,61 @@ function resetRotations()
     setRotations({0: 90, 1: 90, 2: 90, 3: 90, 4: 90});
     sendRotations();
 }
+
+var savedLocationEntry = function(name) {
+    var entry = document.createElement('div');
+    var doLocation = document.createElement('button');
+    doLocation.innerText = name;
+    doLocation.onclick = function() {
+        setRotations(savedLocations[name]);
+        sendRotations();
+    }
+    entry.appendChild(doLocation);
+    var deleteLocation = document.createElement('button');
+    deleteLocation.innerText = "X";
+    deleteLocation.onclick = function() {
+        var xhttp = new XMLHttpRequest();
+        xhttp.open('DELETE', '/savedLocations', false);
+        xhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+        xhttp.send(JSON.stringify({'name': name}));
+        updateLocationList();
+    }
+    entry.appendChild(deleteLocation);
+    return entry;
+}
+
+var locationsList = document.getElementById('savedLocationsList');
+var savedLocations = {};
+
+function fetchLocations() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.open('GET', '/savedLocations', false);
+    xhttp.send();
+    savedLocations = JSON.parse(xhttp.responseText);
+}
+
+function clearElementChildren(element) {
+    while (element.children.length > 0)
+        element.removeChild(element.firstChild);
+}
+
+function updateLocationList() {
+    fetchLocations();
+    clearElementChildren(locationsList);
+    for (const [key, value] of Object.entries(savedLocations)) {
+        locationsList.appendChild(savedLocationEntry(key));
+    }
+}
+
+function saveRotations() {
+    var saveName = prompt("Enter a name for the location");
+    if (saveName == null)
+        return;
+    var xhttp = new XMLHttpRequest();
+    xhttp.open('POST', '/savedLocations', false);
+    xhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+    xhttp.send(JSON.stringify({'name': saveName, 'rotations': getRotations()}));
+    updateLocationList();
+}
+
+updateLocationList();
